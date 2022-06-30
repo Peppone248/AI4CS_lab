@@ -7,7 +7,6 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import f1_score, confusion_matrix, ConfusionMatrixDisplay, classification_report
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import cross_val_score
-from sklearn.preprocessing import MinMaxScaler
 from sklearn.tree import DecisionTreeClassifier, plot_tree
 
 path = 'C:\\Users\\giuse\\Downloads\\trainDdosLabelNumeric.csv'
@@ -28,27 +27,30 @@ def preElaborationData(data, cols):
 
 
 def removeColumns(dataframe, columns):
-    removedColumns = []
+    removed_columns = []
     shape = dataframe.shape
     for c in columns:
         # I pass the attribute directly, taking the minimum and the maximum
         if dataframe[c].min() == dataframe[c].max():
-            removedColumns.append(c)
-    dataframe = dataframe.drop(columns=removedColumns)
-    print('Removed columns: ', removedColumns)
+            removed_columns.append(c)
+    dataframe = dataframe.drop(columns=removed_columns)
+    print('Removed columns: ', removed_columns)
     print('Dim before the removal: ', shape)
     print('Dim after the removal: ', dataframe.shape)
-    return dataframe, removedColumns
+    return dataframe, removed_columns
 
 
 def stratifiedKFold(X, y, folds, seed):
     # This cross - validation object is a variation of KFold that return the stratified folds.
     # The fold are made by preserving the percentage of samples for each class. Stratified because we must have a balanced partitioning
     # of dataset
+
     skf = model_selection.StratifiedKFold(n_splits=folds, random_state=seed, shuffle=True)
     '''
-    If you work with shuffle = false, the dataset is divide by folds, simply following the order of the example.
-    Shuffle = true, really randomly reorganize the dataset. Is important because without you risk that one fold contain examples of the same class.
+    If you work with shuffle = false, the dataset is divide by folds, simply following the order of the example. 
+    Shuffle = true, really randomly reorganize the dataset. Is important because without you risk that one fold 
+    contain examples of the same class. Meanwhile random_state controls the randomness of the estimator. To obtain a 
+    deterministic behaviour during fitting, random_state has to be fixed to an integer 
     '''
 
     # empty lists declaration
@@ -69,9 +71,10 @@ def stratifiedKFold(X, y, folds, seed):
 
 def decisionTreeLearner(X, y, criterion, ccp_alpha, seed):
     tree = DecisionTreeClassifier(criterion=criterion, random_state=seed, ccp_alpha=ccp_alpha)
-    '''
-    ccp_alpha is interesting for minimal cost complexity pruning, that is a pruning strategy implemented in SKlearn for decision tree. 
-    Pruning strategy used to prune the decision tree. 
+    '''ccp_alpha is interesting for minimal cost complexity pruning, that is a pruning strategy implemented in 
+    SKlearn for decision tree. Pruning strategy used to prune the decision tree. When ccp_alpha is set to zero and 
+    keeping the other default parameters of DecisionTreeClassifier , the tree overfits, leading to a 100% training 
+    accuracy. As alpha increases, more of the tree is pruned, thus creating a decision tree that generalizes better. 
     '''
 
     '''
@@ -119,15 +122,16 @@ def decisionTreeF1(YTest, XTest, tree):
 
 
 '''
-This function perform some iteration to identify what is the best decision tree configuration in respect of the criterion and ccp_alpha.
-For each parameter setup we have to compute on each trial of the cross-validation:
-on the training the tree with configuration, compute the evaluation metrics on the five testing set and compute the average of the metrics.
-At the end will return the configuration of decision tree that maximize the weighted f1score computed on the 5-folds cross validation.
+This function perform some iteration to identify what is the best decision tree configuration in respect of the 
+criterion and ccp_alpha. For each parameter setup we have to compute on each trial of the cross-validation: on the 
+training the tree with configuration, compute the evaluation metrics on the five testing set and compute the average 
+of the metrics. At the end will return the configuration of decision tree that maximize the weighted f1score computed 
+on the 5-folds cross validation. 
 '''
 
 
 def determineDecisionTreekFoldConfiguration(xTrainList, xTestList, yTrainList, yTestList, seed):
-    criterionList = ['entropy', 'gini']
+    criterions = ['entropy', 'gini']
     bestCcp_alpha = 0
     best_criterion = ''
     bestF1_score = 0
@@ -136,7 +140,7 @@ def determineDecisionTreekFoldConfiguration(xTrainList, xTestList, yTrainList, y
     step = 0.001
 
     for i in np.arange(minRange, maxRange, step):
-        for criterion in criterionList:
+        for criterion in criterions:
             f1 = []
             for x, y, z, w in zip(xTrainList, yTrainList, xTestList, yTestList):
                 t = decisionTreeLearner(x, y, criterion, i, seed)
@@ -196,9 +200,9 @@ plt.hist(ts['Label'], bins=len(cols))
 plt.show()
 
 # stratified K-fold CV
-cols = list(ts.columns.values)  # retrieves all th
+cols = list(ts.columns.values)
 independentList = cols[0:ts.shape[
-                             1] - 1]  # extract the list of columns with index between 0 and -1, excluding the last columns
+                             1] - 1]
 print('Independent list: ', independentList)  # print all the dataset without the class columns
 target = 'Label'
 X = ts.loc[:, independentList]  # Projection of the original dataset on the independent attributes
@@ -208,7 +212,7 @@ seed = 43
 np.random.seed(seed)
 
 '''
-value to randomize the split, guarantee the same results generated in each iteration. 
+seed is a value to randomize the split, guarantee the same results generated in each iteration. 
 It should be a number that control the sequence of random numbers that are generated. 
 You have to set one seed and use the same seed in the project.
 The important thing is that if I run the program twice, I should construct the same cross-validation of the original data
@@ -255,13 +259,15 @@ La diagonale principale ti dice quanti sono gli examples correttamente predetti
 Sull'asse x ho la classe effettivamente predetta dall'albero e sull'asse y quelle presenti nella colonna label del test set
 Sulla diagonale si possono verificare gli errori sulle predizioni rispetto a quelle che sono le classi nel test set 
 '''
+
 cm = confusion_matrix(y_test, yPred, labels=new_tree.classes_)
 disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=new_tree.classes_)
 disp.plot()
 plt.show()
 print(classification_report(y_test, new_tree.predict(X_test), labels=[0, 1, 2, 3, 4]))
 
-# kmeans
+# K-MEANS
+
 # 1step: remove the class (we already did that, the result is 'X')
 # 2step: clustering without the class
 
@@ -274,73 +280,92 @@ Better clustering = lower inertia.
 We can use kmeans++ to select the seed not randomly the k, selecting k that will maximize the distance between the seeds
 '''
 
-train_cluster_scaled = MinMaxScaler()  # scaling the data to make it comparable in the same range and perform the evaluation
-print(train_cluster_scaled.fit(X))
-print('The scaled data are the following: ')
-Xscaled = train_cluster_scaled.transform(X)
-print(Xscaled, '\n')
+# scaling the data to make it comparable in the same range and perform the evaluation
+train_cluster_scaled = preprocessing.minmax_scale(X)
+print('The scaled train_data are the following: ')
+print(train_cluster_scaled, '\n')
 test_cluster_scaled = preprocessing.minmax_scale(X_test)
+print('The scaled test_data are the following: ')
+print(test_cluster_scaled, '\n')
 
 inertia = []
 
+# looping over random k to compute kmeans on scaled train data
 K = range(2, 25)
 for k in K:
     print("Computing clustering with number of cluster: ", k)
     km = KMeans(n_clusters=k)
-    km = km.fit(Xscaled)
+    km = km.fit(train_cluster_scaled)
     inertia.append(km.inertia_)  # lower inertia values, better clustering
+
 '''
 Inertia allow us to understand the compactness of the clusters. 
-Sum of squared distance will contain the value of the inertia for each cluster, in fact going on through the k
+Array inertia will contain the value of the inertia for each cluster, in fact going on through the k
 the value decrease. If the number decrease means that the examples inside the clusters are closer to the centroids.
 '''
 
-print('\nSum of squared distances:')
+print('\nSum of squared distances: ')
 print(inertia)
+
+# Plot the elbow method to determine the best k value for our purpose We choose the best k observing the graphic.
+# The best k correspond to the value in which the curve become starting asymptotic
 
 plt.plot(K, inertia, 'bx-')  # the parameter bx- is useful to insert the legenda on the elbow graphic
 plt.xlabel('k')
 plt.ylabel('Sum_of_squared_distances')
-plt.title('Elbow Method For Optimal k')
+plt.title('Elbow graphic to found best K')
 plt.show()
 
 best_K = 10
 km = KMeans(n_clusters=best_K, random_state=seed)
-km = km.fit(Xscaled)
+km = km.fit(train_cluster_scaled)
 
 
 def assign_class_to_cluster(y, kmeans_labels):
-    # kmeans_labels return all the labels to identify the clusters. Each examples that belong to the corresponding
+    """
+    kmeans_labels return all the labels to identify the clusters. Each examples that belong to the corresponding
     # clusters.
+    """
+
     clusters = set(kmeans_labels)  # create a set of labels removing the duplicates.
     classes = set(y)
     class_to_cluster = []
     N = 0
     purity = 0
+
     # loop through the clusters cardinality chosen before
-    for c in clusters:
-        # create an array of values, each values correspond to the c index of the element of cluster labels
-        # starting from c = 0, will found all the values 0 in kmeans_labels storing the position of all the labels inside indices
-        # Contain all the positions of c value looping over the clusters
-        indices = [i for i in range(len(kmeans_labels)) if kmeans_labels[i] == c]
-        # take the predictions on the c-th cluster
+    for n in clusters:
+        '''
+        Create an array of values, each values correspond to the n-th index of the element of cluster labels
+        starting from n = 0, will found all the values 0 in kmeans_labels storing the position of all the labels inside indices
+        Contain all the positions of n-th value looping over the clusters
+        '''
+
+        indices = [i for i in range(len(kmeans_labels)) if kmeans_labels[i] == n]
+
+        # take the predictions on the n-th cluster
         # Same size of indices, containing the class associated to the clusters
         selected_classes = [y[i] for i in indices]
         max_class = 0
-        max_predicted_class_frequency = 0  # pcf = predicted class frequency
+        max_predicted_class_frequency = 0
 
         for cl in classes:
-            # counting on the clusters the occurrance of the classes IN EACH CLUSTER
-            pcf = selected_classes.count(cl)
-            # counting the cardinality of clusters
-            N = N + pcf
-            if pcf > max_predicted_class_frequency:
-                max_predicted_class_frequency = pcf
+            # counting on the clusters the occurrence of the classes IN EACH CLUSTER
+            predicted_class_frequency = selected_classes.count(cl)
+            # computing the cardinality of clusters
+            N = N + predicted_class_frequency
+            if predicted_class_frequency > max_predicted_class_frequency:
+                max_predicted_class_frequency = predicted_class_frequency
                 max_class = cl
-        # max_class is the class that has the majority to the cluster c
+        # max_class is the class that has the majority in the cluster c
         purity = purity + max_predicted_class_frequency
         # the nearest class for each of the 25 clusters
         class_to_cluster.append(max_class)
+
+    '''
+    computing the purity with the formula. Sum of the most frequent class in each cluster 
+    divided by the overall number of classes in all the clusters
+    '''
     purity = purity / N
     return clusters, class_to_cluster, purity
 
@@ -350,15 +375,20 @@ print("clusters: ", clusters)
 print("class_to_cluster", class_to_cluster)
 print("purity: ", purity)
 
+'''
+For each testing sample determine the cluster with the closest centroid according to
+K-means clustering
+'''
+
 clustering_predictions_test = km.predict(test_cluster_scaled)
 print(clustering_predictions_test)
+
+# Determine the class given the closest cluster for each test sample
 predictions_test = [class_to_cluster[c] for c in clustering_predictions_test]
 print(predictions_test)
-
 
 cf_mat = confusion_matrix(y_test, predictions_test)
 disp = ConfusionMatrixDisplay(confusion_matrix=cf_mat)
 disp.plot()
 plt.show()
 print(classification_report(y_test, predictions_test))
-
