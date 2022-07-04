@@ -206,9 +206,9 @@ def compute_confusion_matrix(y_test, yPred, new_tree):
 
 def assign_class_to_cluster(y, kmeans_labels):
     """
-     kmeans_labels return all the labels to identify the clusters. Each examples that belong to the corresponding clusters.
+    Each examples that belong to the corresponding clusters. Assign each cluster computed on the training set to a class based on purity.
     :param y:
-    :param kmeans_labels:
+    :param kmeans_labels: kmeans_labels return all the labels to identify the clusters.
     :return:
     """
     clusters = set(kmeans_labels)  # create a set of labels removing the duplicates.
@@ -245,7 +245,6 @@ def assign_class_to_cluster(y, kmeans_labels):
         purity = purity + max_predicted_class_frequency
         # the nearest class for each of the 25 clusters
         class_to_cluster.append(max_class)
-
     '''
     computing the purity with the formula. Sum of the most frequent class in each cluster 
     divided by the overall number of classes in all the clusters
@@ -276,7 +275,7 @@ description = ts.describe()
 description = ts_test.describe()
 
 # Remove the columns with same value on min-max (not only 0)
-removeColumns(ts, cols)
+ts, removed = removeColumns(ts, cols)
 
 # Plot the histogram of the class values
 plt.hist(ts['Label'], bins=5)
@@ -315,6 +314,7 @@ print('best criterion', best_criterion)
 new_tree = decisionTreeLearner(X, y, best_criterion, best_ccp_alpha, seed)
 showTree(new_tree)
 
+ts_test = ts_test.drop(columns=removed)
 cols_test = list(ts_test.columns.values)
 independentList = cols[0:ts_test.shape[1] - 1]
 print(independentList)
